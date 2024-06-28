@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  elasticsearch:
+    image: elasticsearch:8.10.2
+    environment:
+      # Указываем ES запуститься в одном экземпляре
+      - discovery.type=single-node
+      # Пока не будем беспокоиться о безопасности
+      - xpack.security.enabled=false
+    ports:
+      - 9200:9200
+    volumes:
+      - elastic_logs_data:/usr/share/elasticsearch/data
+
+  kibana:
+    image: kibana:8.10.2
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200 
+
+  logstash:
+        image: logstash:8.10.2
+        # depends_on:
+        #   - elasticsearch
+        environment:
+          XPACK_MONITORING_ENABLED: "false"
+          ES_HOST: "elasticsearch:9200"
+        ports:
+          - "5044:5044/udp"
+        volumes:
+          - ./deploy/logstash.conf:/config/logstash.conf:ro
+          - ./log/test-log.json:/var/log/test/test-log.json
+          - ./log/test-log.log:/var/log/test/test-log.log
+        command: logstash -f /config/logstash.conf 
+
+volumes:
+  elastic_logs_data:
